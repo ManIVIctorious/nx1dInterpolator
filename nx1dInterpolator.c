@@ -116,7 +116,7 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
 //  be prefixed with "matrix_" and the interpolation parameters will
 //  be prefixed with "inter_"
 
-    int i, j, k, l, m, n;
+    int i, j, k, l, m;
     int maxdim    = 0;
     int n_points  = 0;
     int nn_points = 0;
@@ -138,11 +138,11 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
 
 // variables for dimensional loop
 //  to break down n-dimensional arrays to a set of 1D arrays
-    int n_iteration;    // Number of 1D runs over ND array
-    int jump;           // Index difference between the nth and (n+1)th entry for a given dimension
-    int d_jump;         // The number of jumps because of superordinate dimensions
-    int offset;         // Offset added after each <d_jump> position, corresponds to previous jump
-    int inter_offset;   // Offset on new interpolated array
+    int n_iteration;      // Number of 1D runs over ND array
+    int jump;             // Index difference between the nth and (n+1)th entry for a given dimension
+    int d_jump;           // The number of jumps because of superordinate dimensions
+    int offset = 0;       // Offset added after each <d_jump> position, corresponds to previous jump
+    int inter_offset = 0; // Offset on new interpolated array
 
 
 //----------------------------------------------------------------------
