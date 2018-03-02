@@ -3,9 +3,10 @@ CC = gcc
 
 CFLAGS += -w -Og -g
 
-EXE = bin/interpolator
+EXE = bin/nx1dInterpolator
 
-OBJ += Interpolator.o
+OBJ += main.o
+OBJ += nx1dInterpolator.o
 OBJ += InputFunction.o
 
 all: $(EXE) Makefile
