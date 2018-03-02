@@ -7,10 +7,17 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline);
 
 int main(int argc, char **argv){
 
-    int i, j;
-    int dimension = 1;
+    int i, j, k;
+    int dimension = 2;
     int n_points  = 0;
     int n_spline  = 1;
+
+    if(argc > 2){
+        dimension = atoi(argv[2]);
+    }
+    if(argc > 3){
+        n_spline = atoi(argv[3]);
+    }
 
 /* Input */
 
@@ -32,21 +39,58 @@ int main(int argc, char **argv){
     n_points = InputFunction(inputfile, &q, nq, &v, dimension);
     dq = q[dimension-1][1] - q[dimension-1][0];
 
-
-/*
-// output input
-    for(i = 0; i < n_points; ++i){
-        printf("\t%d\t% lf\n", i, v[i]);
-    }
-    printf("\n");
-//*/
-
-
 // start interpolation process
     n_points = interpolator(&v, nq, dq, dimension, n_spline);
 
-    for(i = 0; i < n_points; ++i){
-        printf("\t%d\t% lf\n", i+1, v[i]);
+
+// output
+    printf("N");
+    for(i = 0; i < dimension; ++i){ printf("\t% d", nq[i]); } printf("\n");
+
+    switch(dimension){
+        case 1:
+        // 1D Output
+            for(i = 0; i < n_points; ++i){
+                printf("\t%d\t% lf\n", i+1, v[i]);
+            }
+            break;
+
+        case 2:
+        // 2D Output
+            for(i = 0; i < nq[0]; ++i){
+                for(j = 0; j < nq[1]; ++j){
+                    printf("\t% 3d", i+1);
+                    printf("\t% 3d", j+1);
+                    printf("\t% .12lf", v[i*nq[1] + j]);
+                    printf("\n");
+                }
+                printf("\n");
+            }
+            break;
+
+        case 3:
+        // 3D Output
+            for(i = 0; i < nq[0]; ++i){
+                for(j = 0; j < nq[1]; ++j){
+                    for(k = 0; k < nq[2]; ++k){
+                        printf("\t% 3d", i+1);
+                        printf("\t% 3d", j+1);
+                        printf("\t% 3d", k+1);
+
+                        printf("\t% .12lf", v[k + nq[2]*j + nq[2]*nq[1]*i]);
+                        printf("\n");
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+            }
+            break;
+
+        default:
+            for(i = 0; i < n_points; ++i){
+                printf("\t% .12lf\n", v[i]);
+            }
+            break;
     }
 
     return 0;
@@ -58,7 +102,7 @@ int main(int argc, char **argv){
 int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
 
 /*  One dimensional cubic spline interpolation:
-{{{
+//{{{
     The 1D cubic spline interpolation is based on the calculation of a third
     order (cubic) polynomial between each subset of neighbouring grid data points.
 
@@ -79,7 +123,7 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
 
         3 ( (a(i+1) - a(i)) / h(i) - (a(i) - a(i-1)) / h(i-1)
         =
-        h(i-1) c(i-1) + 2 (h(i) + h(i-1)) c(i) + h(i) c(i+1) 
+        h(i-1) c(i-1) + 2 (h(i) + h(i-1)) c(i) + h(i) c(i+1)
 
     On an equispaced grid (as required by the Numerov method) this simplifies to
 
@@ -104,39 +148,39 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
 //}}}*/
 
 /*  Thomas algorithm for solving tridiagonal matrix problems:
- {{{
+//{{{
     The Thomas algorithm is a very efficient way to solve equations of the type
- 
+
         a_i x_i-1 + b_i x_i + c_i x_i+1 = d_i
- 
+
     with the two constraints a_1 = 0 and c_n = 0
- 
+
     In matrix notation (Ax = b) this corresponds to
- 
+
        | b_1    c_1                        | | x_1 |     | d_1 |
        | a_2    b_2    c_2                 | | x_2 |     | d_2 |
        |         .      .      .           | |  .  |  =  |  .  |
        |                .      .      .    | |  .  |     |  .  |
        |                      a_n    b_n   | | x_n |     | d_n |
- 
+
     The algorithm starts with a forward sweep to eliminate the
     a coefficients by modifying the coefficients c (to c') and
     d (to d')
- 
+
         c'_{i} =          c_{i}           / (b_{i} - a_{i} c'_{i-1})
         d'_{i} = (d_{i} - a_{i} d'_{i-1}) / (b_{i} - a_{i} c'_{i-1})
- 
+
     Note, since a_1 = 0:
         c'_1 = c_1 / b_1
         d'_1 = d_1 / b_1
- 
+
     The solution is then obtained by back substitution
- 
+
         x_{i} = d'_{i} - c'_{i} x_{i+1}
- 
+
     Since c_n = 0:
         x_{n} = d'_{n}
- 
+
 //}}}*/
 
 /*
@@ -166,11 +210,11 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
 //  be prefixed with "matrix_" and the interpolation parameters will
 //  be prefixed with "inter_"
 
-    int i, j;
-    int maxdim   = 0;
-    int n_points = 0;
+    int i, j, k, l, m, n;
+    int maxdim    = 0;
+    int n_points  = 0;
     int nn_points = 0;
-    double newdq = 0;
+    double newdq  = 0;
 
 // tridiagonal matrix algorithm coefficients
     double * matrix_c = NULL;
@@ -181,6 +225,18 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
     double   inter_d;
 // interpolated data array
     double * yy = NULL;
+
+// auxiliary pointers to allow freeing and swapping
+    double * aux_v  = (*v);
+    double * aux_yy = NULL;
+
+// variables for dimensional loop
+//  to break down n-dimensional arrays to a set of 1D arrays
+    int n_iteration;    // Number of 1D runs over ND array
+    int jump;           // Index difference between the nth and (n+1)th entry for a given dimension
+    int d_jump;         // The number of jumps because of superordinate dimensions
+    int offset;         // Offset added after each <d_jump> position, corresponds to previous jump
+    int inter_offset;   // Offset on new interpolated array
 
 
 //----------------------------------------------------------------------
@@ -198,89 +254,182 @@ int interpolator(double ** v, int * nq, double dq, int dimension, int n_spline){
 
 // allocate memory for matrix_c, matrix_d and inter_c arrays
 //  as well as the new array containing interpolated data yy
-    matrix_c = malloc((maxdim-1) * sizeof(double));
-    matrix_d = malloc((maxdim-1) * sizeof(double));
-    inter_c  = malloc((maxdim-1) * sizeof(double));
-    yy       = malloc(nn_points  * sizeof(double));
+    matrix_c = malloc((maxdim-1) * sizeof(double)); // freed
+    matrix_d = malloc((maxdim-1) * sizeof(double)); // freed
+    inter_c  = malloc((maxdim-1) * sizeof(double)); // freed
+    yy       = malloc(nn_points  * sizeof(double)); // freed
+    aux_yy   = malloc(nn_points  * sizeof(double)); // points to new *v (old is freed by freeing aux_v)
 
 // define new delta q (newdq) which accounts for interpolated points
     newdq = dq / ((double)n_spline + 1.0);
 
+//----------------------------------------------------------------------------------------------------
+//  Dimensional loop    Dimensional loop    Dimensional loop    Dimensional loop    Dimensional loop
+//----------------------------------------------------------------------------------------------------
+/* Break down n-dimensional arrays to a set of 1D arrays
+//{{{
+    Example: 3x2x4 3D dataset (n_points = 24)
 
-//----------------------------------------------------------------------
-//   Forward sweep   Forward sweep   Forward sweep   Forward sweep
-//----------------------------------------------------------------------
-// fill matrix_d array with tridiagonal matrix d elements
-    matrix_d[0] = 0.0;
-    for(i = 1; i < nq[0]-1; ++i){
-        matrix_d[i] = 3/dq/dq * ((*v)[i-1] - 2*(*v)[i] + (*v)[i+1]);
-    }
+        q0  q1  q2    index
+        -----------------   The example cuboid is built upon 8 (2*4) one dimensional arrays,
+        0   0   0   |   0   each containing 3 entries. The number of iterations needed to cover
+        0   0   1   |   1   each element of this n-dimensional by a 1D array is therefore 8
+        0   0   2   |   2
+        0   0   3   |   3       n_iteration = n_points / nq[0] = 24/3 = 8
 
-// calculate tridiagonal matrix elements c' and d' and save them to
-//  matrix_c and matrix_d, respectively (overwrite matrix_d)
-    matrix_c[0] = 1.0/4.0;
-    for(i = 1; i < nq[0]-2; ++i){
-        matrix_c[i] = 1.0 / (4.0 - matrix_c[i-1]);
-        matrix_d[i] = (matrix_d[i] - matrix_d[i-1]) * matrix_c[i];
-    }
+        0   1   0   |   4   The index difference between the nth and (n+1)th entry
+        0   1   1   |   5   for the first dimension is 8.
+        0   1   2   |   6
+        0   1   3   |   7       jump = n_points / nq[0] = 24/3 = 8
 
+        1   0   0   |   8   The first dimension can be mapped by a simple iteration over the first
+        1   0   1   |   9   <n_iteration> points and an iteration over <nq[0]> times the jump.
+        1   0   2   |  10
+        1   0   3   |  11       0,8,16; 1,9,17; 2,10,18; etc.
 
-//----------------------------------------------------------------------
-// Back substitution to determine inter_c coefficients and interpolation
-//----------------------------------------------------------------------
-// solve the last entry of the matrix problem
-    inter_c[i] = (matrix_d[i] - matrix_d[i-1]) / (4.0 - matrix_c[i-1]);
+        1   1   0   |  12   But by doing the same for the second dimension one gets
+        1   1   1   |  13
+        1   1   2   |  14       0, 4;  1, 5;  2, 6;  3, 7;  which are correct and
+        1   1   3   |  15       4, 8;  5, 9;  6,10;  7,11;  etc. which are utter garbage...
+                                8,12;  9,13; 10,14; 11,15;  would be correct
+        2   0   0   |  16
+        2   0   1   |  17   There are as many additional jump positions (n_iteration/d_jump),
+        2   0   2   |  18   requiring an offset of the length of the previous jump,
+        2   0   3   |  19   as  there are superordinate entries.
 
-// calculate inter_b and inter_d values from inter_c
-    inter_d = - inter_c[i] / (3.0 * dq);
-    inter_b = ((*v)[i+1] - (*v)[i]) / dq - (2.0 / 3.0 * dq * inter_c[i]);
+        2   1   0   |  20       q0: d_jump = 1               offset = n * 0
+        2   1   1   |  21       q1: d_jump = nq[0]           offset = n * jump[0]
+        2   1   2   |  22       q2: d_jump = nq[0] * nq[1]   offset = n * jump[1]   n ∊ [0,d_jump[
+        2   1   3   |  23       etc.
 
-// interpolation procedure for the last n_spline+1 points
-    for(j = n_spline+1; j >= 0; --j){
-        yy[i * (n_spline+1) + j] = (*v)[i]
-                                 + inter_b    * (newdq*j)
-                                 + inter_c[i] * (newdq*j) * (newdq*j)
-                                 + inter_d    * (newdq*j) * (newdq*j) * (newdq*j);
-    }
+    The following code segment outputs the indices of above 3D array as a set of 26 1D arrays
+//*/
+/*
+    dimension=3;
+    nq[0] = 3;
+    nq[1] = 2;
+    nq[2] = 4;
+    n_points = 2*3*4;
 
+    for(k = 0, jump = n_points, d_jump = 1; k < dimension; ++k){
 
-    for(i = nq[0]-3; i >= 0; --i){
-    // solve the rest of the matrix problem from back to front
-        inter_c[i] = matrix_d[i] - matrix_c[i] * inter_c[i+1];
+        n_iteration = n_points/nq[k];
+        jump /= nq[k];
 
-    // calculate inter_b and inter_d values from inter_c
-        inter_d = (inter_c[i+1] - inter_c[i]) / (3.0 * dq);
-        inter_b = ((*v)[i+1] - (*v)[i]) / dq - dq / 3.0 * (2.0 * inter_c[i] + inter_c[i+1]);
+        for(l = 0; l < d_jump; ++l){
+            for(m = 0; m < n_iteration/d_jump; ++m){
 
-
-    // interpolation procedure for the remaining points (all but the last set)
-        for(j = n_spline; j >= 0; --j){
-            yy[i * (n_spline+1) + j] = (*v)[i]
-                                     + inter_b    * (newdq*j)
-                                     + inter_c[i] * (newdq*j) * (newdq*j)
-                                     + inter_d    * (newdq*j) * (newdq*j) * (newdq*j);
+                for(n = 0; n < nq[k]; ++n){
+                    printf("\t%d", m + n*jump + l*offset);
+                }
+                printf("\n");
+            }
         }
+        printf("\n");
+
+        offset = jump;
+        d_jump *= nq[k];
+    }
+    return 0;
+//}}}*/
+
+    for(k = 0, jump = n_points, d_jump = 1; k < dimension; ++k){
+
+        n_iteration = n_points/nq[k];
+        jump /= nq[k];
+
+        for(l = 0; l < d_jump; ++l){
+            for(m = 0; m < n_iteration/d_jump; ++m){
+
+            //----------------------------------------------------------------------
+            //   Forward sweep   Forward sweep   Forward sweep   Forward sweep
+            //----------------------------------------------------------------------
+            // fill matrix_d array with tridiagonal matrix d elements
+                matrix_d[0] = 0.0;
+                for(i = 1; i < nq[k]-1; ++i){
+                    matrix_d[i] = 3/dq/dq * (   (*v)[(i-1)*jump + m + l*offset]
+                                             -2*(*v)[ i   *jump + m + l*offset]
+                                             +  (*v)[(i+1)*jump + m + l*offset]);
+                }
+
+            // calculate tridiagonal matrix elements c' and d' and save them to
+            //  matrix_c and matrix_d, respectively (overwrite matrix_d)
+                matrix_c[0] = 1.0/4.0;
+                for(i = 1; i < nq[k]-2; ++i){
+                    matrix_c[i] = 1.0 / (4.0 - matrix_c[i-1]);
+                    matrix_d[i] = (matrix_d[i] - matrix_d[i-1]) * matrix_c[i];
+                }
+
+
+            //----------------------------------------------------------------------
+            // Back substitution to determine inter_c coefficients and interpolation
+            //----------------------------------------------------------------------
+            // solve the last entry of the matrix problem
+                inter_c[i] = (matrix_d[i] - matrix_d[i-1]) / (4.0 - matrix_c[i-1]);
+
+            // calculate inter_b and inter_d values from inter_c
+                inter_d = - inter_c[i] / (3.0 * dq);
+                inter_b = ((*v)[(i+1)*jump + m + l*offset] - (*v)[i*jump + m + l*offset]) / dq - (2.0 / 3.0 * dq * inter_c[i]);
+
+            // interpolation procedure for the last n_spline+1 points
+                for(j = n_spline+1; j >= 0; --j){
+                    yy[(i * (n_spline+1) + j)*jump + m + l*inter_offset]
+                                            = (*v)[i*jump + m + l*offset]
+                                            + inter_b    * (newdq*j)
+                                            + inter_c[i] * (newdq*j) * (newdq*j)
+                                            + inter_d    * (newdq*j) * (newdq*j) * (newdq*j);
+                }
+
+                for(i = nq[k]-3; i >= 0; --i){
+                // solve the rest of the matrix problem from back to front
+                    inter_c[i] = matrix_d[i] - matrix_c[i] * inter_c[i+1];
+
+                // calculate inter_b and inter_d values from inter_c
+                    inter_d = (inter_c[i+1] - inter_c[i]) / (3.0 * dq);
+                    inter_b = ((*v)[(i+1)*jump + m + l*offset] - (*v)[i*jump + m + l*offset]) / dq - dq / 3.0 * (2.0 * inter_c[i] + inter_c[i+1]);
+
+
+                // interpolation procedure for the remaining points (all but the last set)
+                    for(j = n_spline; j >= 0; --j){
+                        yy[(i * (n_spline+1) + j)*jump + m + l*inter_offset]
+                                                = (*v)[i*jump + m + l*offset]
+                                                + inter_b    * (newdq*j)
+                                                + inter_c[i] * (newdq*j) * (newdq*j)
+                                                + inter_d    * (newdq*j) * (newdq*j) * (newdq*j);
+                    }
+                }
+            }
+        }
+
+    // update *v to point to yy, swap yy and aux_yy
+    //  and initialize new yy to zero.
+        (*v) = yy;
+
+        yy = aux_yy;
+        for(i = 0; i < nn_points; ++i){
+            yy[i] = 0;
+        }
+        aux_yy = (*v);
+
+    // update size of dimension and n_points
+        n_points /= nq[k];
+        nq[k]     = (nq[k]-1) * (n_spline+1) + 1;
+        n_points *= nq[k];
+
+        offset = jump;
+        inter_offset = (jump-1) * (n_spline+1) + 1;
+
+        d_jump *= nq[k];
     }
 
-
-// free original v array and point it to yy instead
-    free(*v); *v = NULL;
-    *v = yy;
 
 // free memory
     free(matrix_c); matrix_c = NULL;
     free(matrix_d); matrix_d = NULL;
     free(inter_c);  inter_c  = NULL;
+    free(aux_v);    aux_v    = NULL;
+    free(yy);       yy       = NULL;
 
-printf("#dimensions:");
-for(i = 0; i < dimension; ++i){ printf("\t%d", nq[i]); } printf("\n");
-printf("#maxdim    = \t%d\n", maxdim);
-printf("#   dq     = \t% lf\n", dq);
-printf("#newdq     = \t% lf\n", newdq);
-printf("#n_spline  = \t%d\n", n_spline);
-printf("#n_points  = \t%d\n", n_points);
-printf("#nn_points = \t%d\n", nn_points);
-
-    return nn_points;
+    return n_points;
 
 }
