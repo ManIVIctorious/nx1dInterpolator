@@ -7,10 +7,20 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
 
 int main(int argc, char **argv){
 
-    int i, j, k;
+    int i, j, k, l;
+    int jump;
+
+/* Input */
+
     int dimension = 2;
     int n_points  = 0;
     int n_spline  = 1;
+
+    double ** q = NULL;
+    double  * v = NULL;
+    char    * inputfile = argv[1];
+    int     * nq = NULL;
+    double    dq;
 
     if(argc > 2){
         dimension = atoi(argv[2]);
@@ -18,14 +28,6 @@ int main(int argc, char **argv){
     if(argc > 3){
         n_spline = atoi(argv[3]);
     }
-
-/* Input */
-
-    double ** q = NULL;
-    double  * v = NULL;
-    char    * inputfile = argv[1];
-    int     * nq = NULL;
-    double dq;
 
 // Memory allocation
     nq = calloc(dimension, sizeof(int));
@@ -37,60 +39,67 @@ int main(int argc, char **argv){
 
 // Actual input
     n_points = InputFunction(inputfile, &q, nq, &v, dimension);
+
+// check input
+    for(i = 0, k = 1; i < dimension; ++i){
+        k *= nq[i];
+    }
+    if(k != n_points){
+        fprintf(stderr, "\n (-) Error in input file:"
+                        "\n     Product of dimension lengths (%d) does not match n_points (%d)"
+                        "\n     Aborting...\n\n"
+                        , k, n_points
+               );
+        exit(1);
+    }
+
+// calculate dq, assume equi distant spacing
     dq = q[dimension-1][1] - q[dimension-1][0];
+
 
 // start interpolation process
     n_points = nx1dInterpolation(&v, nq, dq, dimension, n_spline);
+
+// calculate new dq
+    dq = dq / (double)(n_spline + 1);
+
+// reallocate memory for all q[*]s
+    for(i = 0; i < dimension; ++i){
+        q[i] = realloc(q[i], n_points * sizeof(double));
+    }
+
+// fill all q[*]s
+    for(i = dimension-1, jump = 1; i >= 0; --i){
+
+        for(j = 0; j < n_points/jump/nq[i]; ++j){
+            for(k = 0; k < nq[i]; ++k){
+                for(l = 0; l < jump; ++l){
+
+                    q[i][l + k*jump + j*nq[i]*jump] = q[i][0] + (double)k * dq;
+
+                }
+            }
+        }
+        jump *= nq[i];
+    }
 
 
 // output
     printf("N");
     for(i = 0; i < dimension; ++i){ printf("\t% d", nq[i]); } printf("\n");
 
-    switch(dimension){
-        case 1:
-        // 1D Output
-            for(i = 0; i < n_points; ++i){
-                printf("\t%d\t% lf\n", i+1, v[i]);
-            }
-            break;
-
-        case 2:
-        // 2D Output
-            for(i = 0; i < nq[0]; ++i){
-                for(j = 0; j < nq[1]; ++j){
-                    printf("\t% 3d", i+1);
-                    printf("\t% 3d", j+1);
-                    printf("\t% .12lf", v[i*nq[1] + j]);
-                    printf("\n");
-                }
-                printf("\n");
-            }
-            break;
-
-        case 3:
-        // 3D Output
-            for(i = 0; i < nq[0]; ++i){
-                for(j = 0; j < nq[1]; ++j){
-                    for(k = 0; k < nq[2]; ++k){
-                        printf("\t% 3d", i+1);
-                        printf("\t% 3d", j+1);
-                        printf("\t% 3d", k+1);
-
-                        printf("\t% .12lf", v[k + nq[2]*j + nq[2]*nq[1]*i]);
-                        printf("\n");
-                    }
-                    printf("\n");
-                }
-                printf("\n");
-            }
-            break;
-
-        default:
-            for(i = 0; i < n_points; ++i){
-                printf("\t% .12lf\n", v[i]);
-            }
-            break;
+    for(i = 0, j = 0; i < n_points; ++i){
+    // add blank lines
+        for(j = (dimension-1), k = 1; j >= 0; --j){
+            k *= nq[j];
+            if(i%k == 0){ printf("\n"); }
+        }
+    // actual output
+        for(j = 0; j < dimension; ++j){
+            printf("\t% lf", q[j][i]);
+        }
+        printf("\t% lf", v[i]);
+        printf("\n");
     }
 
     return 0;
