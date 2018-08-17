@@ -150,7 +150,7 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
 //----------------------------------------------------------------------
 // determine the size of the dimension with the most entries
 //  and calculate n_points
-    for(i = 0, maxdim = 0, n_points = 1, nn_points = 1; i < dimension; ++i){
+    for(i = 0, maxdim = 1, n_points = 1, nn_points = 1; i < dimension; ++i){
         if(nq[i] > maxdim){
             maxdim = nq[i];
         }
