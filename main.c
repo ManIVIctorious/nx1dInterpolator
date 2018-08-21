@@ -96,9 +96,9 @@ int main(int argc, char **argv){
         }
     // actual output
         for(j = 0; j < dimension; ++j){
-            printf("\t% lf", q[j][i]);
+            printf("\t% 16.12lf", q[j][i]);
         }
-        printf("\t% lf", v[i]);
+        printf("\t% 16.12lf", v[i]);
         printf("\n");
     }
 
