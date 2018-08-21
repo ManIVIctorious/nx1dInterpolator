@@ -159,7 +159,7 @@ int nx1dInterpolation(double** v, int* nq_in, double dq, int dimension, int n_sp
         if(nq_in[i] > maxdim){
             maxdim = nq_in[i];
         }
-        n_points *= nq_in[i];
+        n_points  *= nq_in[i];
         nn_points *= ((nq_in[i] - 1) * (n_spline + 1) + 1);
     }
 
