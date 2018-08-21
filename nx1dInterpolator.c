@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Offered prototypes
-int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spline);
+// provided prototypes
+int nx1dInterpolation(double** v, int* nq_in, double dq, int dimension, int n_spline);
 
-int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spline){
+int nx1dInterpolation(double** v, int* nq_in, double dq, int dimension, int n_spline){
 
 /*  One dimensional cubic spline interpolation:
 //{{{
@@ -122,19 +122,24 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
     int nn_points = 0;
     double newdq  = 0;
 
+// nq array containing number of points per dimension
+//  the new nq array is needed to prevent overwriting of the original
+//  value in the superordinate function stack
+    int * nq = NULL;            // freed
+
 // tridiagonal matrix algorithm coefficients
-    double * matrix_c = NULL;
-    double * matrix_d = NULL;
+    double * matrix_c = NULL;   // freed
+    double * matrix_d = NULL;   // freed
 // interpolation coefficients
-    double * inter_c  = NULL;
+    double * inter_c  = NULL;   // freed
     double   inter_b;
     double   inter_d;
 // interpolated data array
-    double * yy = NULL;
+    double * yy = NULL;         // freed
 
 // auxiliary pointers to allow freeing and swapping
-    double * aux_v  = (*v);
-    double * aux_yy = NULL;
+    double * aux_v  = (*v);     // freed
+    double * aux_yy = NULL;     // at the end points to new *v => don't free!!!
 
 // variables for dimensional loop
 //  to break down n-dimensional arrays to a set of 1D arrays
@@ -150,12 +155,12 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
 //----------------------------------------------------------------------
 // determine the size of the dimension with the most entries
 //  and calculate n_points
-    for(i = 0, maxdim = 0, n_points = 1, nn_points = 1; i < dimension; ++i){
-        if(nq[i] > maxdim){
-            maxdim = nq[i];
+    for(i = 0, maxdim = 1, n_points = 1, nn_points = 1; i < dimension; ++i){
+        if(nq_in[i] > maxdim){
+            maxdim = nq_in[i];
         }
-        n_points *= nq[i];
-        nn_points *= ((nq[i] - 1) * (n_spline + 1) + 1);
+        n_points *= nq_in[i];
+        nn_points *= ((nq_in[i] - 1) * (n_spline + 1) + 1);
     }
 
 // allocate memory for matrix_c, matrix_d and inter_c arrays
@@ -165,6 +170,12 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
     inter_c  = malloc((maxdim-1) * sizeof(double)); // freed
     yy       = malloc(nn_points  * sizeof(double)); // freed
     aux_yy   = malloc(nn_points  * sizeof(double)); // points to new *v (old is freed by freeing aux_v)
+
+//  allocate memory for nq and fill it with nq_in values
+    nq = malloc(dimension * sizeof(int));
+    for(i = 0; i < dimension; ++i){
+        nq[i] = nq_in[i];
+    }
 
 // define new delta q (newdq) which accounts for interpolated points
     newdq = dq / ((double)n_spline + 1.0);
@@ -335,6 +346,7 @@ int nx1dInterpolation(double ** v, int * nq, double dq, int dimension, int n_spl
     free(inter_c);  inter_c  = NULL;
     free(aux_v);    aux_v    = NULL;
     free(yy);       yy       = NULL;
+    free(nq);       nq       = NULL;
 
     return n_points;
 
