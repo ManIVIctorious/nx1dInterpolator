@@ -1,0 +1,15 @@
+# Executable name
+  EXENAME = nx1d-interpolator
+
+# Additional libraries, includes and packages
+  LIB      =
+  INC      = 
+  PACKAGES = 
+
+# Preprocessor flags
+  PPF = 
+
+# Source Files
+  SRC += main.c
+  SRC += InputFunction.c
+  SRC += nx1dInterpolator.c
